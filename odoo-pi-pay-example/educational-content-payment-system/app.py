@@ -19,7 +19,7 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
 # Configure CORS
-CORS(app, resources={r"/*": {"origins": ["http://127.0.0.1:8080", "https://sandbox.minepi.com", "https://educontentpipay.azurewebsites.net"]}})
+CORS(app, resources={r"/*": {"origins": ["https://app-cdn.minepi.com", "https://educontentpipay.azurewebsites.net"]}})
 
 Bootstrap(app)
 
@@ -32,6 +32,12 @@ def get_content():
     with open('content.txt', 'r', encoding='utf-8') as f:
         content = f.readlines()
     return random.choice(content)
+
+@app.route('/validation-key.txt')
+def get_key():
+    with open('validation-key.txt', 'r', encoding='utf-8') as f:
+        content = f.readlines()
+    return content[0]
 
 @app.route('/back')
 def back():
@@ -87,6 +93,14 @@ def getme():
     userurl = "https://api.minepi.com/v2/me"
     response = requests.post(userurl, headers = header)
     return(response.text)
+
+@app.route('/privacy_policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
+@app.route('/terms_of_service')
+def terms_of_service():
+    return render_template('terms_of_service.html')
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
