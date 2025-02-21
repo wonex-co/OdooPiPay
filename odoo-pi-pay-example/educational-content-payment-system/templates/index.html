@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Conteúdo Educacional</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/css/styles.css" rel="stylesheet" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script> Pi.init({ version: "2.0", sandbox: true }) </script>
+    <script> 
+        // Autenticar o usuário e obter permissão para solicitar pagamentos (adicionado 'username' para fornecer nome de usuário à API):
+        const scopes = ['payments','username'];
+        var accessToken
+        var username
+        
+
+        // Leia mais sobre este callback na referência do SDK:
+        function onIncompletePaymentFound(payment) { 
+            paymentId = payment.identifier
+            txid = payment.transaction.txid
+            $.post('/payment/complete',
+                    {
+                        paymentId: paymentId,
+                        txid: txid,
+                        debug: 'cancel'
+                    }
+                )
+        };
+
+        Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth) {
+          accessToken = auth.accessToken
+          username = auth.user.username
+          $('#username').text(username); // escreve o nome de usuário na página
+        }).catch(function(error) {
+          console.error(error);
+        });
+    </script>
+    <script>
+        // estamos fazendo pagamentos
+        const Pi = window.Pi;
+        // função principal de pagamentos
+        function createPayment() {
+            const paymentData = {
+                amount: 0.01,
+                memo: "Isso compra acesso a mais conteúdo educacional. Que negócio!",
+                metadata: { contentid: 123456 }
+            };
+           // o SDK faz tudo isso como mágica
+            const paymentCallbacks = {
+                onReadyForServerApproval: (paymentDTO) => {
+                        paymentId = paymentDTO
+                        $.post('/payment/approve', {
+                        paymentId: paymentId,
+                        accessToken: accessToken
+                    }
+                    )
+                },
+                onReadyForServerCompletion: (paymentDTO,txid) => {
+                    paymentId = paymentDTO
+                    txid = txid
+                    $.post('/payment/complete', 
+                            {
+                                paymentId: paymentId,
+                                txid: txid,
+                                debug: 'complete'
+                            }
+                        )
+                },
+                onCancel: (paymentDTO) => {
+                    paymentId = paymentDTO.identifier
+                    $.post('/payment/complete',
+                            {
+                                paymentId: paymentId,
+                               // txid: txid,
+                                debug: 'cancel'
+                            }
+                        )
+                },
+                onError: (paymentDTO) => {
+                   console.log('Houve um erro ', paymentDTO)
+                    paymentId = paymentDTO.identifier
+                    $.post('/payment/error',
+                            {
+                                paymentDTO: paymentDTO,
+                                paymentId: paymentId,
+                                //txid: txid,
+                                debug: 'error'
+                            }
+                        )
+                },
+                onIncompletePaymentFound: function(paymentDTO)
+                { 
+                    paymentId = paymentDTO.identifier
+                    console.log('onIncompletePaymentFound', paymentId)
+                    $.post('/payment/complete',
+                            {
+                                paymentId: paymentId,
+                                txid: paymentDTO.transaction.txid
+                            }
+                        )
+                 }
+            };
+
+            Pi.createPayment(paymentData, paymentCallbacks);
+        }
+    </script>
+    <script type="text/javascript">
+        function fn_copy(data)
+    {
+        var temp = document.getElementById("content").value;
+        if(temp != "")
+    {
+        document.getElementById("target_"+data).value = temp;
+    }
+    else
+        alert("Texto está vazio");
+    }
+</script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="text-center">
+            <h1>Gerador de Conteúdo Educacional</h1>
+            <p><small>Aprenda com facilidade, <span id="username"></span>.</small></p>
+            <a href="#" id="newContentBtn" class="btn btn-primary mt-3">Obter Conteúdo Educacional</a>
+                <div id="instructions" class="small hidden">Aqui está. Este conteúdo foi copiado para sua área de transferência:</div>
+                <div id="content"></div>
+                <div id="contentcite" class="small"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade"  data-backdrop='static' id="myModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    Para mais conteúdo educacional, por favor pague 0.01 Pi + taxa de 0.01 Pi, total de 0.02 Pi. Que negócio!<br />
+                    <a href="#" id="resetBtn" class="btn btn-primary mt-3" onClick='javascript:createPayment();'>Pagar</a>
+                    <a href="#" id="resetBtn" data-dismiss="modal" class="btn btn-secondary mt-3" onClick='javascript:window.open("/back", "_self")'>Deixa pra lá</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>    
+        let count = 0;
+
+        $('#newContentBtn').click(function() {
+            if (count < 4) {
+                $.get('/get_content', function(data) {
+                    $('#instructions').removeClass('hidden')
+                    $('#content').text(data);
+                    $('#contentcite').text('Conteúdo cortesia de ' + username + '.')
+                    thiscontent = (data + 'Conteúdo cortesia de ' + username + '.')
+                    navigator.clipboard.writeText(thiscontent)
+                    count++;
+                    if (count == 4) {
+                        $('#newContentBtn').prop('disabled', true);
+                        $('#myModal').modal('show');
+                    }
+                });
+            }
+        });
+
+        $('#resetBtn').click(function() {
+            count = 0;
+            $('#content').text('');
+            $('#newContentBtn').prop('disabled', false);
+            $('#myModal').modal('hide');
+        });
+    </script>
+</body>
+</html>
