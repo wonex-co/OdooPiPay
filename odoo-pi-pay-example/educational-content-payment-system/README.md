@@ -56,7 +56,7 @@ educational-content-payment-system
 
 ## Usage Guidelines
 
-- Access the application through your web browser at `http://localhost:5000`.
+- Access the application through your web browser at `http://127.0.0.1:8080/`.
 - Users can browse available educational content and make payments using the Pi blockchain.
 - After a successful payment, users will gain access to the purchased content.
 
